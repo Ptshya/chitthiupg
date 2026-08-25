@@ -1,0 +1,520 @@
+import os
+
+def generate_html(is_future):
+    title = "Future Letter" if is_future else "Standard Letter"
+    base_price = 150 if is_future else 120
+    draft_key = "chitthi_draft_future" if is_future else "chitthi_draft_standard"
+    
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Chitthi Writing Desk - {title}">
+  <title>{title} — Chitthi</title>
+  <link rel="icon" type="image/png" href="sec-logo1.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .write-layout {{ display: flex; gap: 40px; flex-wrap: wrap; }}
+    .paper-preview-container {{ flex: 1; min-width: 300px; }}
+    .control-panel {{ flex: 1; min-width: 300px; background: var(--bg-secondary, #1a1a1a); padding: 30px; border-radius: 12px; border: 1px solid #333; }}
+    .paper-sheet {{ background: #fdfaf4; color: #333; padding: 40px; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); min-height: 500px; font-family: serif; line-height: 1.8; }}
+    .form-input, .form-textarea {{ width: 100%; padding: 12px; margin-top: 8px; margin-bottom: 20px; border: 1px solid #444; background: #222; color: #fff; border-radius: 6px; }}
+    .form-textarea {{ height: 150px; resize: vertical; }}
+    .payment-selector {{ display: flex; gap: 15px; margin-bottom: 25px; }}
+    .payment-btn {{ flex: 1; padding: 15px; border: 1px solid #444; border-radius: 8px; cursor: pointer; text-align: center; background: #222; }}
+    .payment-btn.active {{ border-color: var(--gold, #C5A059); }}
+    .price-row {{ display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; }}
+    .price-row.total {{ font-weight: bold; font-size: 1.1rem; border-top: 1px solid #444; padding-top: 10px; margin-top: 10px; color: var(--gold, #C5A059); }}
+    .checkout-step {{ display: none; }}
+    .checkout-step.active {{ display: block; }}
+    .checkout-nav-bar {{ display: flex; gap: 20px; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 15px; }}
+    .checkout-nav-item {{ color: #666; font-weight: bold; }}
+    .checkout-nav-item.active {{ color: var(--gold, #C5A059); }}
+    .badge-theme {{ display: inline-block; padding: 6px 12px; background-color: var(--gold, #C5A059); color: #faf7f2; font-size: 0.75rem; margin-bottom: 12px; }}
+    .modal-overlay {{ position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; }}
+    .modal-overlay.active {{ display: flex; }}
+    .modal-box {{ background: #1a1a1a; padding: 40px; border-radius: 12px; border: 1px solid var(--gold, #C5A059); color: #fff; width: 90%; max-width: 500px; }}
+    .draft-alert {{ background-color: rgba(197, 160, 89, 0.05); border: 1px solid var(--gold, #C5A059); padding: 10px 15px; font-size: 0.85rem; margin-bottom: 20px; display: none; justify-content: space-between; align-items: center; color: #fff; border-radius: 6px;}}
+    .draft-alert button {{ background: none; border: none; color: var(--gold, #C5A059); cursor: pointer; font-weight: bold; text-decoration: underline; }}
+  </style>
+</head>
+<body data-theme="dark">
+
+  <div class="announcement-bar">
+    <div class="delivery-banner"><span>✦ &nbsp; 100% Free Delivery Within Nepal &nbsp; ✦</span></div>
+  </div>
+
+  <nav class="navbar">
+    <div class="container navbar-container" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
+      <a href="index.html" class="nav-logo" style="display: flex; align-items: center; text-decoration: none; color: white;">
+        <img src="images/logo.png" alt="Chitthi Logo" class="logo-img" style="height: 60px;">
+        <span style="font-family: serif; font-size: 1.5rem; margin-left: 10px;">Chitthi</span>
+      </a>
+      <div class="nav-actions"><a href="index.html#letters" class="btn-secondary" style="margin-right: 15px;">&larr; Back to Products</a></div>
+    </div>
+  </nav>
+
+  <main class="container section-padding" style="padding-top: 40px; max-width: 1200px; margin: 0 auto; padding-left: 20px; padding-right: 20px;">
+    <div class="checkout-nav-bar">
+      <div class="checkout-nav-item active" id="nav-step-1">1. Write & Personalize</div>
+      <div class="checkout-nav-item" id="nav-step-2">2. Delivery Details</div>
+      <div class="checkout-nav-item" id="nav-step-3">3. Final Payment</div>
+    </div>
+
+    <!-- Draft alert indicator -->
+    <div class="draft-alert" id="draft-alert">
+      <span>We found an unsaved letter draft!</span>
+      <div>
+        <button id="restore-draft-btn">Restore Draft</button>
+        <button id="discard-draft-btn" style="margin-left: 15px; text-decoration: none; color: #888;">Discard</button>
+      </div>
+    </div>
+
+    <!-- MAIN FORM Wrapper for submitting without API -->
+    <form id="order-form" action="https://formsubmit.co/npchitthi@gmail.com" method="POST" enctype="multipart/form-data">
+        
+        <!-- HIDDEN FIELDS FOR FORMSUBMIT CONFIG -->
+        <input type="hidden" name="_subject" value="New {title} Order!">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_next" value="YOUR_WEBSITE_URL/success.html">
+        <input type="hidden" name="Letter_Type" value="{title}">
+
+        <div class="write-layout">
+          <!-- Preview Panel -->
+          <div class="paper-preview-container">
+            <div class="control-label" style="margin-bottom: 15px; color: var(--gold, #C5A059);">Live Stationery Preview</div>
+            <div class="paper-sheet" id="paper-sheet">
+              <div class="letter-to-from" id="preview-to-from" style="margin-bottom: 30px; border-bottom: 1px solid #eaeaea; padding-bottom: 15px;">
+                <strong>To:</strong> <span id="preview-to">...</span><br>
+                <strong>From:</strong> <span id="preview-from">...</span>
+              </div>
+              <div class="letter-body-preview font-classic-serif" id="preview-body" style="white-space: pre-wrap;">Begin typing your letter on the right...</div>
+            </div>
+          </div>
+
+          <!-- Control Panel -->
+          <div class="control-panel">
+            <div class="badge-theme">{title}</div>
+            
+            <!-- STEP 1: Compose -->
+            <div class="checkout-step active" id="step-1">
+              <h2 style="font-size: 1.8rem; margin-bottom: 24px; font-style: normal; font-family: serif; color: var(--gold, #C5A059);">The Writing Desk</h2>
+              
+              <div class="control-group">
+                <label class="control-label" for="letter-to">To (Recipient Name)</label>
+                <input type="text" id="letter-to" name="Recipient_Name" class="form-input" placeholder="e.g. Priyadarshani Joshi" required>
+              </div>
+
+              <div class="control-group">
+                <label class="control-label" for="letter-from">From (Sender Name)</label>
+                <input type="text" id="letter-from" name="Sender_Name" class="form-input" placeholder="e.g. Aarav Devkota" required>
+              </div>
+
+              <div class="control-group">
+                <label class="control-label" for="letter-body">Letter Body</label>
+                <textarea id="letter-body" name="Letter_Body" class="form-textarea" placeholder="Write your letter here..." required></textarea>
+                <div class="word-counter-area" style="font-size: 0.85rem; color: #888;">
+                  <span id="word-count-warning" style="color: #ff6b6b; font-weight: bold; display: none;">Ticked box needed to exceed 1600 characters!</span>
+                  <span><span id="char-count">0</span> chars (Max <span id="max-chars">1600</span>)</span>
+                </div>
+              </div>
+
+              <div class="control-group" style="margin-top: 20px;">
+                <label class="control-label" style="display: block; margin-bottom: 10px; color: var(--gold, #C5A059);">Luxury Add-ons</label>
+                
+                <label class="option-checkbox-container" style="display: block; margin-bottom: 8px;">
+                  <input type="checkbox" id="toggle-more-words" name="Extra_Characters" value="Yes">
+                  <span style="font-size: 0.95rem; margin-left: 8px;">I need more than 1600 characters (+NPR 20)</span>
+                </label>
+
+                <label class="option-checkbox-container" style="display: block; margin-bottom: 20px;">
+                  <input type="checkbox" id="toggle-handwritten" name="Handwritten" value="Yes">
+                  <span style="font-size: 0.95rem; margin-left: 8px;">Hand-written (+NPR 20 per 1600 chars)</span>
+                </label>
+              </div>
+
+              <button type="button" id="to-step-2-btn" class="btn-primary" style="width: 100%; margin-top: 15px; padding: 15px; background: var(--gold, #C5A059); color: #fff; border: none; border-radius: 6px; cursor: pointer;">Continue to Details &rarr;</button>
+            </div>
+
+            <!-- STEP 2: Address & Date -->
+            <div class="checkout-step" id="step-2">
+              <h2 style="font-size: 1.8rem; margin-bottom: 24px; font-family: serif; color: var(--gold, #C5A059);">Delivery Details</h2>
+              
+              <div class="control-group">
+                <label class="control-label" for="future-date" style="font-size: 0.85rem; display: block; margin-bottom: 8px; color: var(--gold, #C5A059);">
+                  {"Future Delivery Date (1 month to 5 years)" if is_future else "Custom Delivery Date (3 days to 1 month)"}
+                </label>
+                <input type="date" id="future-date" name="Delivery_Date" class="form-input" style="margin-bottom: {'5px' if is_future else '20px'};" required>
+                {f'<p style="font-size: 0.85rem; color: var(--gold, #C5A059); margin: 0 0 20px 0;" id="future-cost-notice">Time capsule fee: +NPR 0</p>' if is_future else ''}
+              </div>
+
+              <div class="control-group">
+                <label class="control-label" for="address-name">Recipient Name</label>
+                <input type="text" id="address-name" name="Delivery_Name" class="form-input" required readonly style="background: #111; color: #888;">
+              </div>
+
+              <div class="control-group">
+                <label class="control-label" for="address-phone">Phone Number</label>
+                <input type="tel" id="address-phone" name="Delivery_Phone" class="form-input" placeholder="e.g. 98XXXXXXXX" required>
+              </div>
+
+              <div class="control-group">
+                <label class="control-label" for="address-street">Detailed Street Address / Landmark</label>
+                <input type="text" id="address-street" name="Delivery_Address" class="form-input" placeholder="e.g. Ward 3, Jhamsikhel" required>
+              </div>
+
+              <div class="control-group">
+                <label class="control-label" for="address-city">City / District</label>
+                <input type="text" id="address-city" name="Delivery_City" class="form-input" placeholder="e.g. Lalitpur" required>
+              </div>
+
+              <div style="display: flex; gap: 15px; margin-top: 30px;">
+                <button type="button" id="back-to-step-1-btn" class="btn-secondary" style="flex: 1; padding: 15px; background: #333; color: #fff; border: none; border-radius: 6px; cursor: pointer;">&larr; Back</button>
+                <button type="button" id="to-step-3-btn" class="btn-primary" style="flex: 1.5; padding: 15px; background: var(--gold, #C5A059); color: #fff; border: none; border-radius: 6px; cursor: pointer;">Proceed to Payment &rarr;</button>
+              </div>
+            </div>
+
+            <!-- STEP 3: Payment -->
+            <div class="checkout-step" id="step-3">
+              <h2 style="font-size: 1.8rem; margin-bottom: 24px; font-family: serif; color: var(--gold, #C5A059);">Complete Payment</h2>
+              <p style="margin-bottom: 20px; color: #bbb; font-size: 0.95rem;">Select your gateway and upload the payment proof.</p>
+
+              <div class="payment-selector">
+                <div class="payment-btn active" data-gateway="esewa"><span style="font-weight: bold; color: #60bb46;">eSewa Wallet</span></div>
+                <div class="payment-btn" data-gateway="khalti"><span style="font-weight: bold; color: #5c2d91;">Khalti Wallet</span></div>
+                <input type="hidden" name="Payment_Gateway" id="hidden-gateway" value="esewa">
+              </div>
+
+              <div class="price-summary-panel" style="background: #222; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <div class="price-row"><span>{title} Base</span><span id="price-base">NPR {base_price}</span></div>
+                <div class="price-row" id="price-word-row" style="display: none;"><span>Expanded Length (>1600 chars)</span><span>NPR 20</span></div>
+                <div class="price-row" id="price-handwritten-row" style="display: none;"><span>Handwritten Curation</span><span id="price-handwritten">NPR 20</span></div>
+                {f'<div class="price-row" id="price-future-row"><span>Time Capsule Storage</span><span id="price-future">NPR 0</span></div>' if is_future else ''}
+                <div class="price-row"><span>Delivery Cost</span><span style="color: var(--gold, #C5A059);">FREE</span></div>
+                <div class="price-row total"><span>Total Price</span><span id="price-total">NPR {base_price}</span></div>
+                <input type="hidden" name="Total_Price" id="hidden-total-price" value="{base_price}">
+              </div>
+
+              <div class="control-group" style="margin-top: 15px;">
+                <label class="control-label" style="display: block; margin-bottom: 8px; color: var(--gold, #C5A059);">Upload Payment Screenshot (Max 10MB)</label>
+                <input type="file" id="payment-proof" name="Payment_Proof" accept="image/*" class="form-input" style="padding: 10px;" required>
+                <p id="file-error" style="color: #ff6b6b; font-size: 0.85rem; display: none; margin-top: -15px; margin-bottom: 15px;">File exceeds 10MB limit.</p>
+              </div>
+
+              <div class="control-group">
+                <label class="control-label" for="sender-phone">Your WhatsApp Number (For Confirmation)</label>
+                <input type="tel" id="sender-phone" name="Sender_WhatsApp" class="form-input" placeholder="e.g. 98XXXXXXXX" required>
+              </div>
+              
+              <div class="control-group">
+                <label class="control-label" for="sender-email">Your Email Address</label>
+                <input type="email" id="sender-email" name="email" class="form-input" placeholder="your@email.com" required>
+              </div>
+              
+              <div class="control-group" style="margin-bottom: 20px;">
+                <label class="option-checkbox-container" style="display: flex; align-items: flex-start; gap: 10px;">
+                  <input type="checkbox" id="share-story" name="Share_Story" value="Yes" style="margin-top: 5px;">
+                  <span style="font-size: 0.95rem; line-height: 1.4;">Would you like to share the story behind this letter anonymously on Chitthi's social media?</span>
+                </label>
+              </div>
+
+              <div style="display: flex; gap: 15px; margin-top: 30px;">
+                <button type="button" id="back-to-step-2-btn" class="btn-secondary" style="flex: 1; padding: 15px; background: #333; color: #fff; border: none; border-radius: 6px; cursor: pointer;">&larr; Back</button>
+                <button type="submit" id="checkout-finalize-btn" class="btn-primary" style="flex: 1.5; padding: 15px; background: var(--gold, #C5A059); color: #fff; border: none; border-radius: 6px; cursor: pointer;">Submit Order &rarr;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+    </form>
+  </main>
+  
+  <div id="loading-overlay" class="modal-overlay">
+      <div style="text-align: center; color: var(--gold, #C5A059);">
+          <h2 style="font-family: serif;">Sealing your letter...</h2>
+      </div>
+  </div>
+
+  <script>
+    const basePrice = {base_price};
+    let scheduledFee = 0;
+    const draftKey = "{draft_key}";
+    const addressKey = "chitthi_address";
+    
+    // Calendar limits
+    const today = new Date();
+    const dateInput = document.getElementById('future-date');
+    
+    function formatDateString(d) {{
+      const year = d.getFullYear();
+      let month = '' + (d.getMonth() + 1);
+      let day = '' + d.getDate();
+      if (month.length < 2) month = '0' + month;
+      if (day.length < 2) day = '0' + day;
+      return [year, month, day].join('-');
+    }}
+    
+    {"// Standard min = 3 days, max = 1 month" if not is_future else "// Future min = 1 month, max = 5 years"}
+    const minDate = new Date(today);
+    {"minDate.setDate(minDate.getDate() + 3);" if not is_future else "minDate.setMonth(minDate.getMonth() + 1);"} 
+    dateInput.min = formatDateString(minDate);
+    
+    const maxDate = new Date(today);
+    {"maxDate.setMonth(maxDate.getMonth() + 1);" if not is_future else "maxDate.setFullYear(maxDate.getFullYear() + 5);"} 
+    dateInput.max = formatDateString(maxDate);
+
+    // Draft & Auto-save Logic
+    function saveDraft() {{
+        const draft = {{
+            to: document.getElementById('letter-to').value,
+            from: document.getElementById('letter-from').value,
+            body: document.getElementById('letter-body').value,
+            moreWords: document.getElementById('toggle-more-words').checked,
+            handwritten: document.getElementById('toggle-handwritten').checked,
+            timestamp: Date.now()
+        }};
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+    }}
+
+    function saveAddress() {{
+        const address = {{
+            phone: document.getElementById('address-phone').value,
+            street: document.getElementById('address-street').value,
+            city: document.getElementById('address-city').value
+        }};
+        localStorage.setItem(addressKey, JSON.stringify(address));
+    }}
+
+    function checkSavedData() {{
+        // Check Address
+        const savedAddress = localStorage.getItem(addressKey);
+        if (savedAddress) {{
+            const addr = JSON.parse(savedAddress);
+            document.getElementById('address-phone').value = addr.phone || '';
+            document.getElementById('address-street').value = addr.street || '';
+            document.getElementById('address-city').value = addr.city || '';
+        }}
+
+        // Check Draft
+        const savedDraft = localStorage.getItem(draftKey);
+        if (savedDraft) {{
+            const draft = JSON.parse(savedDraft);
+            const daysOld = (Date.now() - draft.timestamp) / (1000 * 60 * 60 * 24);
+            if (daysOld <= 10 && (draft.to || draft.body)) {{
+                document.getElementById('draft-alert').style.display = 'flex';
+                
+                document.getElementById('restore-draft-btn').onclick = () => {{
+                    document.getElementById('letter-to').value = draft.to || '';
+                    document.getElementById('letter-from').value = draft.from || '';
+                    document.getElementById('letter-body').value = draft.body || '';
+                    document.getElementById('toggle-more-words').checked = draft.moreWords || false;
+                    document.getElementById('toggle-handwritten').checked = draft.handwritten || false;
+                    
+                    document.getElementById('letter-to').dispatchEvent(new Event('input'));
+                    document.getElementById('letter-from').dispatchEvent(new Event('input'));
+                    document.getElementById('letter-body').dispatchEvent(new Event('input'));
+                    
+                    document.getElementById('draft-alert').style.display = 'none';
+                }};
+                
+                document.getElementById('discard-draft-btn').onclick = () => {{
+                    localStorage.removeItem(draftKey);
+                    document.getElementById('draft-alert').style.display = 'none';
+                }};
+            }} else if (daysOld > 10) {{
+                localStorage.removeItem(draftKey);
+            }}
+        }}
+    }}
+
+    // Live previews
+    document.getElementById('letter-to').addEventListener('input', (e) => {{
+      document.getElementById('preview-to').textContent = e.target.value || '...';
+      saveDraft();
+    }});
+    document.getElementById('letter-from').addEventListener('input', (e) => {{
+      document.getElementById('preview-from').textContent = e.target.value || '...';
+      saveDraft();
+    }});
+
+    const textarea = document.getElementById('letter-body');
+    const charCountEl = document.getElementById('char-count');
+    const maxCharsEl = document.getElementById('max-chars');
+    const moreWordsCheckbox = document.getElementById('toggle-more-words');
+    const wordWarning = document.getElementById('word-count-warning');
+
+    textarea.addEventListener('input', () => {{
+      let text = textarea.value;
+      let limit = moreWordsCheckbox.checked ? 3200 : 1600;
+      
+      if (text.length > limit) {{
+        textarea.value = text.substring(0, limit);
+        if (!moreWordsCheckbox.checked) {{
+          wordWarning.style.display = 'inline';
+        }}
+      }} else {{
+        wordWarning.style.display = 'none';
+      }}
+      
+      charCountEl.textContent = textarea.value.length;
+      document.getElementById('preview-body').textContent = textarea.value || 'Begin typing your letter on the right...';
+      calculatePrice();
+      saveDraft();
+    }});
+
+    moreWordsCheckbox.addEventListener('change', () => {{
+      maxCharsEl.textContent = moreWordsCheckbox.checked ? '3200' : '1600';
+      if (!moreWordsCheckbox.checked) {{
+        if (textarea.value.length > 1600) {{
+          textarea.value = textarea.value.substring(0, 1600);
+          charCountEl.textContent = 1600;
+          document.getElementById('preview-body').textContent = textarea.value;
+        }}
+      }}
+      calculatePrice();
+      saveDraft();
+    }});
+
+    document.getElementById('toggle-handwritten').addEventListener('change', () => {{
+        calculatePrice();
+        saveDraft();
+    }});
+
+    {"dateInput.addEventListener('change', () => { calculateFutureFee(); });" if is_future else ""}
+
+    function calculateFutureFee() {{
+      if (!dateInput.value) {{
+          scheduledFee = 0;
+          document.getElementById('future-cost-notice').textContent = `Time capsule fee: +NPR ${{scheduledFee}}`;
+          calculatePrice();
+          return;
+      }}
+      const selected = new Date(dateInput.value);
+      const diffTime = Math.abs(selected - today);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays <= 365) {{ 
+        scheduledFee = 0;
+      }} else {{
+        const diffYears = diffDays / 365.25;
+        if (diffYears <= 2) scheduledFee = 50;
+        else if (diffYears <= 3) scheduledFee = 100;
+        else if (diffYears <= 4) scheduledFee = 150;
+        else scheduledFee = 200;
+      }}
+      document.getElementById('future-cost-notice').textContent = `Time capsule fee: +NPR ${{scheduledFee}}`;
+      calculatePrice();
+    }}
+
+    let totalPaidPrice = {base_price};
+    
+    function calculatePrice() {{
+      let tempTotal = basePrice;
+      
+      if (moreWordsCheckbox.checked) {{
+        document.getElementById('price-word-row').style.display = 'flex';
+        tempTotal += 20;
+      }} else {{
+        document.getElementById('price-word-row').style.display = 'none';
+      }}
+
+      if (document.getElementById('toggle-handwritten').checked) {{
+        document.getElementById('price-handwritten-row').style.display = 'flex';
+        let handwritingSurcharge = 20;
+        if (moreWordsCheckbox.checked) {{
+          handwritingSurcharge = 40; 
+        }}
+        document.getElementById('price-handwritten').textContent = `NPR ${{handwritingSurcharge}}`;
+        tempTotal += handwritingSurcharge;
+      }} else {{
+        document.getElementById('price-handwritten-row').style.display = 'none';
+      }}
+
+      { "document.getElementById('price-future').textContent = `NPR ${scheduledFee}`; tempTotal += scheduledFee;" if is_future else "" }
+
+      totalPaidPrice = tempTotal;
+      document.getElementById('price-total').textContent = `NPR ${{totalPaidPrice}}`;
+      document.getElementById('hidden-total-price').value = totalPaidPrice;
+    }}
+
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+    const step3 = document.getElementById('step-3');
+    const nav1 = document.getElementById('nav-step-1');
+    const nav2 = document.getElementById('nav-step-2');
+    const nav3 = document.getElementById('nav-step-3');
+
+    document.getElementById('to-step-2-btn').addEventListener('click', () => {{
+      const toVal = document.getElementById('letter-to').value.trim();
+      if (!toVal) return alert('Please fill out the recipient name.');
+      if (!textarea.value.trim()) return alert('Please write a letter body.');
+      
+      document.getElementById('address-name').value = toVal;
+      step1.classList.remove('active'); step2.classList.add('active');
+      nav1.classList.remove('active'); nav2.classList.add('active');
+    }});
+
+    document.getElementById('back-to-step-1-btn').addEventListener('click', () => {{
+      step2.classList.remove('active'); step1.classList.add('active');
+      nav2.classList.remove('active'); nav1.classList.add('active');
+    }});
+
+    document.getElementById('to-step-3-btn').addEventListener('click', () => {{
+      if (!dateInput.value) return alert('Please select a delivery date.');
+      if (!document.getElementById('address-phone').value || !document.getElementById('address-street').value) {{
+        return alert('Please complete required address fields.');
+      }}
+      saveAddress(); // Save address details
+      calculatePrice();
+      step2.classList.remove('active'); step3.classList.add('active');
+      nav2.classList.remove('active'); nav3.classList.add('active');
+    }});
+
+    document.getElementById('back-to-step-2-btn').addEventListener('click', () => {{
+      step3.classList.remove('active'); step2.classList.add('active');
+      nav3.classList.remove('active'); nav2.classList.add('active');
+    }});
+
+    const payBtns = document.querySelectorAll('.payment-btn');
+    payBtns.forEach(btn => {{
+      btn.addEventListener('click', () => {{
+        payBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('hidden-gateway').value = btn.dataset.gateway;
+      }});
+    }});
+
+    // File Validation
+    const fileInput = document.getElementById('payment-proof');
+    fileInput.addEventListener('change', function() {{
+        if(this.files[0].size > 10 * 1024 * 1024) {{ // 10MB
+            document.getElementById('file-error').style.display = 'block';
+            this.value = ''; 
+        }} else {{
+            document.getElementById('file-error').style.display = 'none';
+        }}
+    }});
+
+    // Form Submission Handling
+    document.getElementById('order-form').addEventListener('submit', function(e) {{
+        // We will let the form submit naturally to formsubmit/Netlify 
+        // Show loading overlay
+        document.getElementById('loading-overlay').classList.add('active');
+        localStorage.removeItem(draftKey); // Clear draft after successful setup
+    }});
+
+    window.addEventListener('DOMContentLoaded', () => {{
+        checkSavedData();
+        calculatePrice();
+    }});
+  </script>
+</body>
+</html>"""
+    
+    return html
+
+with open('order-standard.html', 'w', encoding='utf-8') as f:
+    f.write(generate_html(False))
+
+with open('order-future.html', 'w', encoding='utf-8') as f:
+    f.write(generate_html(True))
