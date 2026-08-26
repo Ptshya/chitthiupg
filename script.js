@@ -578,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
             image: "images/letterfuture.png",
             currentPrice: "NRS 150",
             originalPrice: "NRS 200",
-            orderUrl: "https://docs.google.com/forms/d/e/1FAIpQLSfTphD-9ga14N4Lbln6pPpmBJzSQAGEXHl5ybI_IGTFLZcdPg/viewform?usp=header",
+            orderUrl: "order-future.html",
             features: [
                 "Customizable delivery date up to 5 years into the future",
                 "Stored securely in acid-free archival envelopes",

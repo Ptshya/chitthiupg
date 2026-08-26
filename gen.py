@@ -71,13 +71,11 @@ def generate_html(is_future):
       </div>
     </div>
 
-    <!-- MAIN FORM Wrapper for submitting without API -->
     <form id="order-form" action="https://formsubmit.co/npchitthi@gmail.com" method="POST" enctype="multipart/form-data">
         
         <!-- HIDDEN FIELDS FOR FORMSUBMIT CONFIG -->
         <input type="hidden" name="_subject" value="New {title} Order!">
         <input type="hidden" name="_captcha" value="false">
-        <input type="hidden" name="_next" value="YOUR_WEBSITE_URL/success.html">
         <input type="hidden" name="Letter_Type" value="{title}">
 
         <div class="write-layout">
@@ -130,8 +128,13 @@ def generate_html(is_future):
 
                 <label class="option-checkbox-container" style="display: block; margin-bottom: 20px;">
                   <input type="checkbox" id="toggle-handwritten" name="Handwritten" value="Yes">
-                  <span style="font-size: 0.95rem; margin-left: 8px;">Hand-written (+NPR 20 per 1600 chars)</span>
+                  <span style="font-size: 0.95rem; margin-left: 8px;">Hand-written (+NPR 20 per 800 chars)</span>
                 </label>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; background: #222; padding: 15px; border-radius: 6px; margin-top: 20px; border: 1px solid var(--gold, #C5A059);">
+                <span style="font-weight: bold; color: #fff;">Live Estimated Total:</span>
+                <span id="live-price-display" style="font-size: 1.2rem; font-weight: bold; color: var(--gold, #C5A059);">NPR {base_price}</span>
               </div>
 
               <button type="button" id="to-step-2-btn" class="btn-primary" style="width: 100%; margin-top: 15px; padding: 15px; background: var(--gold, #C5A059); color: #fff; border: none; border-radius: 6px; cursor: pointer;">Continue to Details &rarr;</button>
@@ -410,6 +413,7 @@ def generate_html(is_future):
     
     function calculatePrice() {{
       let tempTotal = basePrice;
+      const currentChars = textarea.value.length;
       
       if (moreWordsCheckbox.checked) {{
         document.getElementById('price-word-row').style.display = 'flex';
@@ -420,11 +424,11 @@ def generate_html(is_future):
 
       if (document.getElementById('toggle-handwritten').checked) {{
         document.getElementById('price-handwritten-row').style.display = 'flex';
-        let handwritingSurcharge = 20;
-        if (moreWordsCheckbox.checked) {{
-          handwritingSurcharge = 40; 
-        }}
+        let blocks = Math.ceil(Math.max(1, currentChars) / 800);
+        let handwritingSurcharge = blocks * 20;
+        
         document.getElementById('price-handwritten').textContent = `NPR ${{handwritingSurcharge}}`;
+        document.getElementById('price-handwritten-row').querySelector('span:first-child').textContent = `Handwritten (${{blocks}}x 800 chars)`;
         tempTotal += handwritingSurcharge;
       }} else {{
         document.getElementById('price-handwritten-row').style.display = 'none';
@@ -435,6 +439,11 @@ def generate_html(is_future):
       totalPaidPrice = tempTotal;
       document.getElementById('price-total').textContent = `NPR ${{totalPaidPrice}}`;
       document.getElementById('hidden-total-price').value = totalPaidPrice;
+      
+      const livePriceEl = document.getElementById('live-price-display');
+      if (livePriceEl) {{
+          livePriceEl.textContent = `NPR ${{totalPaidPrice}}`;
+      }}
     }}
 
     const step1 = document.getElementById('step-1');
@@ -446,8 +455,38 @@ def generate_html(is_future):
 
     document.getElementById('to-step-2-btn').addEventListener('click', () => {{
       const toVal = document.getElementById('letter-to').value.trim();
+      const bodyVal = textarea.value.trim();
       if (!toVal) return alert('Please fill out the recipient name.');
-      if (!textarea.value.trim()) return alert('Please write a letter body.');
+      if (!bodyVal) return alert('Please write a letter body.');
+      
+      // Basic profanity/toxicity check
+      const toxicWords = ['bitch', 'fuck', 'shit', 'asshole', 'kill', 'murder', 'suicide', 'die', 'cunt', 'whore', 'slut', 'dick', 'cock', 'pussy'];
+      const textToCheck = (toVal + " " + bodyVal).toLowerCase();
+      let foundToxic = false;
+      for (const word of toxicWords) {{
+        // Regex to check whole words
+        const regex = new RegExp(`\\\\b${{word}}\\\\b`, 'i');
+        if (regex.test(textToCheck)) {{
+          foundToxic = true;
+          break;
+        }}
+      }}
+      
+      if (foundToxic) {{
+         // We add a hidden field so the admin is alerted, but we don't block the user from submitting
+         let flagInput = document.getElementById('toxic-flag');
+         if (!flagInput) {{
+             flagInput = document.createElement('input');
+             flagInput.type = 'hidden';
+             flagInput.name = 'ADMIN_ALERT';
+             flagInput.id = 'toxic-flag';
+             flagInput.value = 'FLAGGED FOR REVIEW: Potentially sensitive/abusive content detected.';
+             document.getElementById('order-form').appendChild(flagInput);
+         }}
+      }} else {{
+         const flagInput = document.getElementById('toxic-flag');
+         if (flagInput) flagInput.remove();
+      }}
       
       document.getElementById('address-name').value = toVal;
       step1.classList.remove('active'); step2.classList.add('active');
@@ -497,8 +536,7 @@ def generate_html(is_future):
 
     // Form Submission Handling
     document.getElementById('order-form').addEventListener('submit', function(e) {{
-        // We will let the form submit naturally to formsubmit/Netlify 
-        // Show loading overlay
+        // Allow the form to submit naturally to FormSubmit.co
         document.getElementById('loading-overlay').classList.add('active');
         localStorage.removeItem(draftKey); // Clear draft after successful setup
     }});
