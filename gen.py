@@ -77,6 +77,9 @@ def generate_html(is_future):
         <input type="hidden" name="_subject" value="New {title} Order!">
         <input type="hidden" name="_captcha" value="false">
         <input type="hidden" name="Letter_Type" value="{title}">
+        
+        <!-- WEBHOOK FOR GOOGLE SHEETS (Leave value empty until correct webhook link is ready) -->
+        <input type="hidden" name="_webhook" value="">
 
         <div class="write-layout">
           <!-- Preview Panel -->
