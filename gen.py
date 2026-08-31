@@ -78,8 +78,14 @@ def generate_html(is_future):
         <input type="hidden" name="_captcha" value="false">
         <input type="hidden" name="Letter_Type" value="{title}">
         
-        <!-- WEBHOOK FOR GOOGLE SHEETS -->
-        <input type="hidden" name="_webhook" value="https://hook.eu1.make.com/u7iezc7b5s53pq0027y4lj677p2yddjr">
+        <!-- Redirect user to custom "Thank You" page after submission -->
+        <input type="hidden" name="_next" value="https://chitthi.com.np/thanks.html">
+        
+        <!-- Send a copy of each submission to another email -->
+        <input type="hidden" name="_cc" value="">
+        
+        <!-- Webhook for Google Sheets via Make.com -->
+        <input type="hidden" name="_webhook" value="https://hook.eu1.make.com/ydtswnf47bnqaw9jgeighwc7h7n45j76">
 
         <div class="write-layout">
           <!-- Preview Panel -->
