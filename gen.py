@@ -83,9 +83,6 @@ def generate_html(is_future):
         
         <!-- Send a copy of each submission to another email -->
         <input type="hidden" name="_cc" value="">
-        
-        <!-- Webhook for Google Sheets via Make.com -->
-        <input type="hidden" name="_webhook" value="https://hook.eu1.make.com/ydtswnf47bnqaw9jgeighwc7h7n45j76">
 
         <div class="write-layout">
           <!-- Preview Panel -->
